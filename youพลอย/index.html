@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio - Twilight Snow & Sakura</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        twilight: {
+                            bg: '#1a162b',        /* ม่วงเข้มยามเย็นใกล้ค่ำ */
+                            card: '#28223d',
+                            text: '#f1f5f9',
+                            sub: '#cbd5e1',
+                            border: '#3d345a'
+                        },
+                        sakura: {
+                            pink: '#ff7597',      /* ซากุระชมพูสว่างเรืองแสง */
+                            bright: '#ff3b69',
+                            soft: '#fbcfe8',
+                            glow: 'rgba(255, 117, 151, 0.4)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            /* พื้นหลังไล่สีท้องฟ้ายามเย็นใกล้ลับฟ้า (ส้มแสด อมม่วง และน้ำเงินค่ำ) */
+            background: linear-gradient(180deg, #2a1b3d 0%, #1a162b 60%, #0d0a17 100%);
+            color: #f1f5f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Canvas Background */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Sunset Glow Gradient Overlay (แสงอาทิตย์อัสดงที่ขอบฟ้าด้านล่าง) */
+        .twilight-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 90%, rgba(249, 115, 22, 0.15) 0%, rgba(217, 70, 239, 0.08) 45%, rgba(0,0,0,0) 80%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Dark Glassmorphism Cards (กระจกฝ้าโทนมืด ยามเย็น) */
+        .twilight-card {
+            background: rgba(35, 29, 53, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 1.25rem;
+        }
+
+        .twilight-card:hover {
+            border-color: rgba(255, 117, 151, 0.5);
+            box-shadow: 0 12px 35px rgba(255, 59, 105, 0.25), 0 0 20px rgba(255, 117, 151, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .glow-btn:hover {
+            box-shadow: 0 6px 20px rgba(255, 117, 151, 0.3);
+            background: rgba(48, 40, 71, 0.9);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1a162b; }
+        ::-webkit-scrollbar-thumb { background: #ff7597; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-rose-500 selection:text-white">
+
+    <canvas id="particle-canvas"></canvas>
+    <div class="twilight-overlay"></div>
+
+    <!-- NAVBAR -->
+    <nav class="border-b border-white/10 bg-[#1a162b]/70 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold tracking-widest text-white flex items-center gap-2">
+                <span class="inline-block text-rose-400 animate-bounce">🌸</span>
+                <span class="bg-gradient-to-r from-amber-200 via-rose-300 to-pink-400 bg-clip-text text-transparent">PORTFOLIO</span>
+            </div>
+
+            <!-- Desktop Menu -->
+            <ul class="hidden md:flex space-x-6 text-xs font-semibold tracking-wider text-slate-300">
+                <li><button onclick="openModal('modal-about')" class="hover:text-rose-400 transition py-1">01. ประวัติ</button></li>
+                <li><button onclick="openModal('modal-likes')" class="hover:text-rose-400 transition py-1">02. สิ่งที่ชอบ</button></li>
+                <li><button onclick="openModal('modal-friends')" class="hover:text-rose-400 transition py-1">03. เพื่อนสนิท</button></li>
+                <li><button onclick="openModal('modal-experience')" class="hover:text-rose-400 transition py-1">04. ประสบการณ์</button></li>
+                <li><button onclick="openModal('modal-projects')" class="hover:text-rose-400 transition py-1">05. ผลงาน</button></li>
+            </ul>
+
+            <!-- Mobile Hamburger Button -->
+            <button id="menu-btn" class="md:hidden text-rose-400 focus:outline-none p-2 rounded-lg border border-white/10 bg-white/5">
+                <svg id="menu-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+                <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Mobile Dropdown Menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-white/10 bg-[#1a162b]/95 px-6 py-4 shadow-lg">
+            <ul class="flex flex-col space-y-3 text-xs font-semibold tracking-wider">
+                <li><button onclick="openModal('modal-about'); closeMobileMenu();" class="block w-full text-left text-slate-300 hover:text-rose-400 py-1">01. ประวัติ</button></li>
+                <li><button onclick="openModal('modal-likes'); closeMobileMenu();" class="block w-full text-left text-slate-300 hover:text-rose-400 py-1">02. สิ่งที่ชอบ</button></li>
+                <li><button onclick="openModal('modal-friends'); closeMobileMenu();" class="block w-full text-left text-slate-300 hover:text-rose-400 py-1">03. เพื่อนสนิท</button></li>
+                <li><button onclick="openModal('modal-experience'); closeMobileMenu();" class="block w-full text-left text-slate-300 hover:text-rose-400 py-1">04. ประสบการณ์</button></li>
+                <li><button onclick="openModal('modal-projects'); closeMobileMenu();" class="block w-full text-left text-slate-300 hover:text-rose-400 py-1">05. ผลงาน</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-5xl mx-auto px-6 py-10 flex-grow flex items-center justify-center z-10 w-full relative">
+
+        <section id="about" class="w-full space-y-8">
+            <div class="border-l-4 border-rose-400 pl-4 flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-white tracking-wider">MAIN PROFILE</h2>
+                    <p class="text-slate-400 text-xs mt-1">ยินดีต้อนรับสู่พื้นที่รวบรวมผลงานและตัวตน</p>
+                </div>
+                <span class="hidden md:inline-block text-xs font-mono text-rose-300 border border-rose-400/30 px-3 py-1 rounded-full bg-rose-500/10">LOC: THAILAND</span>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- รูปโปรไฟล์หลัก -->
+                <div class="twilight-card p-6 text-center cursor-pointer group" onclick="openModal('modal-about')">
+                    <div class="w-36 h-36 mx-auto mb-4 rounded-full border-2 border-rose-300/40 p-1 relative shadow-[0_0_25px_rgba(255,117,151,0.3)] group-hover:scale-105 transition duration-300 bg-rose-950/30">
+                        <div class="w-full h-full rounded-full overflow-hidden bg-slate-800">
+                            <!-- รูปโปรไฟล์หลัก -->
+                            <img src="./im/71113.jpg" alt="My Avatar" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-white tracking-wide group-hover:text-rose-300 transition">นาย มหรรณพ กัณฑ์โย</h3>
+                    <p class="text-rose-400 text-xs font-semibold mt-2">[ คลิกดูรายละเอียดโปรไฟล์ ]</p>
+                </div>
+
+                <!-- ข้อมูลย่อ -->
+                <div class="twilight-card p-6 md:col-span-2 space-y-3 flex flex-col justify-center text-sm">
+                    <div class="flex items-center gap-2 border-b border-white/10 pb-2">
+                        <span class="text-rose-400 font-semibold w-28">ชื่อเล่น:</span>
+                        <span class="text-slate-200 font-medium">กร</span>
+                    </div>
+                    <div class="flex items-center gap-2 border-b border-white/10 pb-2">
+                        <span class="text-rose-400 font-semibold w-28">การศึกษา:</span>
+                        <span class="text-slate-200 font-medium">ปวส. 1 (วิทยาลัยอาชีวศึกษานครปฐม)</span>
+                    </div>
+                    <div class="flex items-center gap-2 border-b border-white/10 pb-2">
+                        <span class="text-rose-400 font-semibold w-28">สายงาน:</span>
+                        <span class="text-slate-200 font-medium">Web Development & Database</span>
+                    </div>
+                    <div class="flex items-center gap-2 pt-1">
+                        <span class="text-rose-400 font-semibold w-28">สโลแกน:</span>
+                        <span class="text-slate-300 italic">"กับคนรู้ใจยังไงก็รู้มือ"</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ไอคอนเมนูด้านล่าง -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 pt-2">
+                <button onclick="openModal('modal-likes')" class="twilight-card glow-btn p-6 text-center flex flex-col items-center justify-center space-y-3">
+                    <div class="text-4xl md:text-5xl">❄️</div>
+                    <div class="text-sm font-bold text-slate-200 tracking-wider">สิ่งที่ชอบ</div>
+                </button>
+                <button onclick="openModal('modal-friends')" class="twilight-card glow-btn p-6 text-center flex flex-col items-center justify-center space-y-3">
+                    <div class="text-4xl md:text-5xl">🌸</div>
+                    <div class="text-sm font-bold text-slate-200 tracking-wider">เพื่อนสนิท</div>
+                </button>
+                <button onclick="openModal('modal-experience')" class="twilight-card glow-btn p-6 text-center flex flex-col items-center justify-center space-y-3">
+                    <div class="text-4xl md:text-5xl">📜</div>
+                    <div class="text-sm font-bold text-slate-200 tracking-wider">ประสบการณ์</div>
+                </button>
+                <button onclick="openModal('modal-projects')" class="twilight-card glow-btn p-6 text-center flex flex-col items-center justify-center space-y-3">
+                    <div class="text-4xl md:text-5xl">🏮</div>
+                    <div class="text-sm font-bold text-slate-200 tracking-wider">ผลงาน</div>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/10 py-4 text-center text-xs text-slate-400 font-mono z-10 relative bg-[#0d0a17]/50">
+        TWILIGHT SNOW & SAKURA HIGHLIGHT | PORTFOLIO
+    </footer>
+
+    <!-- POPUP MODAL -->
+    <div id="modal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-[60] p-4 md:p-6">
+        <div class="twilight-card max-w-4xl w-full p-6 md:p-8 relative border border-white/20 max-h-[85vh] overflow-y-auto shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-300 hover:text-white font-semibold text-xs bg-white/10 hover:bg-rose-500 px-3 py-1.5 rounded-full border border-white/20 transition">✕ ปิดหน้าต่าง</button>
+            <div id="modal-content" class="space-y-6 pt-2">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // ระบบอนุภาค: หิมะตกสะท้อนแสง + ซากุระเรืองแสงโดดเด่น
+        const particleCount = 85;
+        const particles = Array.from({ length: particleCount }, () => {
+            const rand = Math.random();
+            let type = 'snow'; 
+            if (rand > 0.35 && rand <= 0.75) type = 'petal';    // กลีบซากุระ
+            if (rand > 0.75) type = 'flower';                  // ดอกซากุระเต็มดอก (ไฮไลท์)
+
+            const isSakura = type !== 'snow';
+
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: type === 'flower' ? Math.random() * 8 + 11 : (type === 'petal' ? Math.random() * 6 + 5 : Math.random() * 2.5 + 1.2),
+                speedX: isSakura ? (Math.random() - 0.2) * 1.2 : (Math.random() - 0.5) * 0.6,
+                speedY: isSakura ? Math.random() * 1.2 + 0.8 : Math.random() * 0.8 + 0.4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.04,
+                opacity: isSakura ? Math.random() * 0.3 + 0.7 : Math.random() * 0.5 + 0.4,
+                type: type,
+                swing: Math.random() * Math.PI * 2
+            };
+        });
+
+        // วาดรูปดอกซากุระไฮไลท์ 5 กลีบ
+        function drawSakuraFlower(ctx, size) {
+            ctx.fillStyle = '#ff7597';
+            for (let i = 0; i < 5; i++) {
+                ctx.rotate((Math.PI * 2) / 5);
+                ctx.beginPath();
+                ctx.ellipse(0, size / 2, size / 3.2, size / 1.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // เกสรดอกซากุระสีส้มอมชมพูสว่าง
+            ctx.beginPath();
+            ctx.arc(0, 0, size / 3.8, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff3b69';
+            ctx.fill();
+        }
+
+        function renderEngine() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.swing += 0.02;
+                p.x += p.speedX + Math.sin(p.swing) * 0.6;
+                p.y += p.speedY;
+                p.rotation += p.rotationSpeed;
+
+                if (p.y > canvas.height + 20) {
+                    p.y = -20;
+                    p.x = Math.random() * canvas.width;
+                }
+                if (p.x > canvas.width + 20) p.x = -10;
+                if (p.x < -20) p.x = canvas.width;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rotation);
+                ctx.globalAlpha = p.opacity;
+
+                if (p.type === 'flower') {
+                    // วาดดอกซากุระไฮไลท์ พร้อมออร่าเรืองแสงสีชมพูเข้มข้นบนฉากหลังมืด
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = 'rgba(255, 117, 151, 0.8)';
+                    drawSakuraFlower(ctx, p.size);
+                } else if (p.type === 'petal') {
+                    // วาดกลีบซากุระ
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = 'rgba(255, 117, 151, 0.6)';
+                    ctx.beginPath();
+                    ctx.fillStyle = '#ff7597';
+                    ctx.ellipse(0, 0, p.size, p.size / 2.2, Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // วาดเกล็ดหิมะสีขาวนวล เด่นชัด สะท้อนออร่าแสงยามเย็น
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            });
+
+            requestAnimationFrame(renderEngine);
+        }
+        renderEngine();
+
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const openIcon = document.getElementById('menu-icon-open');
+        const closeIcon = document.getElementById('menu-icon-close');
+
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            openIcon.classList.toggle('hidden');
+            closeIcon.classList.toggle('hidden');
+        });
+
+        function closeMobileMenu() {
+            mobileMenu.classList.add('hidden');
+            openIcon.classList.remove('hidden');
+            closeIcon.classList.add('hidden');
+        }
+
+        const modalData = {
+            'modal-about': `
+                <div class="border-b border-white/10 pb-3">
+                    <h3 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">👤 ABOUT ME</h3>
+                </div>
+                <div class="space-y-6 text-sm md:text-base text-slate-200">
+                    <div class="flex justify-center my-2">
+                        <div class="w-48 h-48 md:w-56 md:h-56 rounded-full border-2 border-rose-300/40 shadow-xl relative bg-rose-950/30 overflow-hidden">
+                            <img src="./im/71113.jpg" alt="นาย มหรรณพ กัณฑ์โย" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <div class="bg-white/5 p-5 rounded-xl border border-white/10 space-y-3">
+                        <p><b class="text-rose-400">ชื่อ-นามสกุล:</b> นาย มหรรณพ กัณฑ์โย</p>
+                        <p><b class="text-rose-400">ระดับการศึกษา:</b> ประกาศนียบัตรวิชาชีพขั้นสูง ชั้นปีที่ 1 (ปวส. 1)</p>
+                        <p><b class="text-rose-400">ความถนัดด้านเทคโนโลยี:</b> Web Development (PHP, HTML, CSS) & Database Management (MySQL, SQL)</p>
+                        <p><b class="text-rose-400">จุดมุ่งหมาย:</b> พัฒนาระบบเว็บแอปพลิเคชันที่มีประสิทธิภาพสูง เพื่อตอบโจทย์การใช้งานจริงในองค์กร</p>
+                    </div>
+                </div>
+            `,
+            'modal-likes': `
+                <div class="border-b border-white/10 pb-3">
+                    <h3 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">❄️ FAVORITES</h3>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6 text-slate-200">
+                    <div class="twilight-card p-4 space-y-3">
+                        <div class="aspect-video bg-slate-800 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center relative">
+                            <img src="./im/71118.jpg" alt="สิ่งที่ชอบ 1" class="w-full h-full object-cover">
+                        </div>
+                        <h4 class="text-lg font-bold text-white">💻 ความสนใจในเทคโนโลยี</h4>
+                        <p class="text-xs text-slate-300 leading-relaxed">พัฒนาเว็บไซต์ ปรับแต่งยานยนต์และซอฟแวร์ และการออกแบบโครงสร้างฐานข้อมูลเชิงสัมพันธ์ รวมถึงมีความสนใจใน IoT and Network</p>
+                    </div>
+                    <div class="twilight-card p-4 space-y-3">
+                        <div class="aspect-video bg-slate-800 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center relative">
+                             <img src="./im/71117.jpg" alt="สิ่งที่ชอบ 2" class="w-full h-full object-cover">
+                        </div>
+                        <h4 class="text-lg font-bold text-white">🏍️ กิจวัตรที่ชอบ</h4>
+                        <p class="text-xs text-slate-300 leading-relaxed">ในวันเวลาที่ว่างเว้นจากภารกิจต่างๆ ผมมักทุ่มเทเวลาให้กับการนอน เมื่อนอนจนอิ่มก็จะมีการลุกไปออกกำลังกายแบบแรงต้านเป็นหลักและในหลายโอกาสก็จะไปเรียนรู้ทักษะยานยนต์และเทคโนโลยีต่างๆจบท้ายด้วยการเล่นเกมหรือดูหนังที่ชอบหรือสนใจ</p>
+                    </div>
+                </div>
+            `,
+            'modal-friends': `
+                <div class="border-b border-white/10 pb-3">
+                    <h3 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">🌸 ALLIES NETWORK</h3>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="twilight-card p-5 flex items-center space-x-5">
+                        <div class="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-rose-400/30 overflow-hidden flex-shrink-0 bg-slate-800 flex items-center justify-center shadow-md">
+                            <img src="./im/71114.jpg" alt="เพื่อน 1" class="w-full h-full object-cover">
+                        </div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-bold text-white">นาย ธนกร อ้นพา</h4>
+                            <span class="inline-block text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">STATUS: ONLINE</span>
+                        </div>
+                    </div>
+                    <div class="twilight-card p-5 flex items-center space-x-5">
+                        <div class="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-rose-400/30 overflow-hidden flex-shrink-0 bg-slate-800 flex items-center justify-center shadow-md">
+                            <img src="./im/71115.jpg" alt="เพื่อน 2" class="w-full h-full object-cover">
+                        </div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-bold text-white">นาย ดนัย ปั้นโพธิ์ทอง</h4>
+                            <span class="inline-block text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">STATUS: ONLINE</span>
+                        </div>
+                    </div>
+                </div>
+            `,
+            'modal-experience': `
+                <div class="border-b border-white/10 pb-3">
+                    <h3 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">📜 WORK LOGS</h3>
+                </div>
+                <div class="space-y-4 text-slate-200">
+                    <div class="twilight-card p-5 space-y-2">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                            <h4 class="text-base font-bold text-white">พัฒนา Web Application ระบบจองยานพาหนะ (Medimove)</h4>
+                            <span class="text-xs font-mono bg-rose-500/20 text-rose-300 px-3 py-1 rounded-full border border-rose-500/30">2025 - 2026</span>
+                        </div>
+                        <p class="text-xs md:text-sm text-slate-300 mt-2 leading-relaxed">ออกแบบโครงสร้างฐานข้อมูล SQL และพัฒนาฟังก์ชันระบบ Login / การทำตารางจองและอนุมัติยานพาหนะผ่านเว็บแอปพลิเคชันด้วย PHP และศึกษาภาษาคอมพิวเตอร์ หลักการคอมพิวเตอร์ เครือข่าย และเทคโนโลยีใหม่ๆ</p>
+                    </div>
+                </div>
+            `,
+            'modal-projects': `
+                <div class="border-b border-white/10 pb-3">
+                    <h3 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">🏮 PROJECT ARCHIVE</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-200 items-stretch">
+                    <div class="twilight-card p-5 flex flex-col justify-between space-y-4">
+                        <div class="space-y-3">
+                            <div class="aspect-video w-full bg-slate-800 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center">
+                                <img src="./im/71119.jpg" alt="Medimove Project" class="w-full h-full object-cover">
+                            </div>
+                            <h4 class="text-lg font-bold text-white">Medimove Project</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">ระบบจองยานพาหนะภายในองค์กรโรงพยาบาล ช่วยบริหารจัดการคิวการใช้วิธีเดินทางและติดตามสถานะยานพาหนะ</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[11px] pt-2">
+                            <span class="bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full border border-rose-500/30">PHP</span>
+                            <span class="bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full border border-rose-500/30">MySQL</span>
+                        </div>
+                    </div>
+
+                    <div class="twilight-card p-5 flex flex-col justify-between space-y-4">
+                        <div class="space-y-3">
+                            <div class="aspect-video w-full bg-slate-800 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center">
+                                <img src="./im/711120.jpg" alt="OVAS2 Project" class="w-full h-full object-cover">
+                            </div>
+                            <h4 class="text-lg font-bold text-white">OVAS2 Project</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">อัปเกรดจากระบบเดิม Medimove demo project ลดความซับซ้อนที่ไม่จำเป็นออกไป และพัฒนาให้ใช้ง่ายขึ้นผ่านตัวช่วยอย่าง Line Developers ที่ช่วยให้ซัพพอร์ตผู้ใช้มากขึ้น และระบบจัดการฐานข้อมูลรูปแบบใหม่</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[11px] pt-2">
+                            <span class="bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full border border-rose-500/30">HTML/CSS/JSON</span>
+                            <span class="bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full border border-rose-500/30">Line Developers</span>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        function openModal(key) {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = modalData[key] || '<p class="text-rose-400">NO DATA FOUND</p>';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    </script>
+</body>
+</html>
